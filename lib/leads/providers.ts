@@ -19,6 +19,21 @@ type ApolloPerson = {
   };
 };
 
+type ApolloOrganization = {
+  id?: string;
+  name?: string;
+  website_url?: string;
+  primary_domain?: string;
+  linkedin_url?: string;
+  phone?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  industry?: string;
+  estimated_num_employees?: number;
+  founded_year?: number;
+};
+
 type ApolloSearchOptions = {
   includeCompanySizes?: boolean;
   includeEmailStatus?: boolean;
@@ -142,6 +157,21 @@ async function searchApollo(filters: SearchFilters): Promise<LeadSearchResponse>
     }
   }
 
+  const companies = await runApolloOrganizationSearch(filters);
+  if (companies.length > 0) {
+    return {
+      provider: "Apollo",
+      providerMode: "live",
+      total: companies.length,
+      searchedAt: new Date().toISOString(),
+      leads: companies,
+      notes: [
+        "Live Apollo company search is active.",
+        "Showing matched companies first. Add target roles to find contacts inside these accounts.",
+      ],
+    };
+  }
+
   return {
     provider: "Apollo",
     providerMode: "live",
@@ -153,6 +183,73 @@ async function searchApollo(filters: SearchFilters): Promise<LeadSearchResponse>
       "Try a broader search such as mantenimiento Mexico, limpieza Mexico, seguridad Mexico, or property management Mexico.",
     ],
   };
+}
+
+async function runApolloOrganizationSearch(filters: SearchFilters) {
+  const endpoint =
+    process.env.APOLLO_ORGANIZATION_SEARCH_URL ??
+    "https://api.apollo.io/api/v1/mixed_companies/search";
+  const attempts = [
+    {
+      keywords: buildBroadApolloQuery(filters),
+      industries: ["facilities services", "real estate", "security and investigations", "consumer services", "construction"],
+      includeCompanySizes: true,
+    },
+    {
+      keywords: "facility management OR mantenimiento OR limpieza OR seguridad OR servicios generales",
+      industries: [],
+      includeCompanySizes: true,
+    },
+    {
+      keywords: "mantenimiento OR limpieza OR seguridad",
+      industries: [],
+      includeCompanySizes: false,
+    },
+  ];
+
+  for (const attempt of attempts) {
+    const url = new URL(endpoint);
+
+    appendParam(url, "q_keywords", attempt.keywords);
+    inferCountries(filters).forEach((country) => {
+      appendParam(url, "organization_locations[]", country);
+    });
+    if (attempt.includeCompanySizes) {
+      filters.companySizes.map(mapEmployeeRangeToApollo).forEach((range) => {
+        appendParam(url, "organization_num_employees_ranges[]", range);
+      });
+    }
+    attempt.industries.forEach((industry) => {
+      appendParam(url, "q_organization_keyword_tags[]", industry);
+    });
+    appendParam(url, "page", "1");
+    appendParam(url, "per_page", "25");
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "Cache-Control": "no-cache",
+        "Content-Type": "application/json",
+        "X-Api-Key": process.env.APOLLO_API_KEY ?? "",
+      },
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`Apollo organization search returned ${response.status}${details ? `: ${details}` : ""}`);
+    }
+
+    const payload = (await response.json()) as { organizations?: ApolloOrganization[] };
+    const organizations = payload.organizations ?? [];
+    if (organizations.length > 0) {
+      return organizations.map((organization, index) =>
+        normalizeApolloOrganization(organization, filters, index),
+      );
+    }
+  }
+
+  return [];
 }
 
 async function runApolloPeopleSearch(filters: SearchFilters, options: ApolloSearchOptions) {
@@ -255,6 +352,55 @@ function normalizeApolloPerson(
     country,
     techStack: filters.techStack,
     verification: person.email ? "not_requested" : "unknown",
+    source: "apollo",
+  };
+}
+
+function normalizeApolloOrganization(
+  organization: ApolloOrganization,
+  filters: SearchFilters,
+  index: number,
+): Lead {
+  const company = organization.name ?? "Unknown company";
+  const country = organization.country ?? filters.countries[0] ?? "Mexico";
+  const city = organization.city ?? organization.state ?? "Mexico";
+  const website = stripProtocol(organization.website_url ?? organization.primary_domain ?? "");
+  const initials = company
+    .split(/\s+/)
+    .map((word) => word[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return {
+    id: organization.id ?? `apollo_org_${index}`,
+    name: `${company} Leadership`,
+    initials: initials || "CO",
+    title: "Target account",
+    company,
+    industry: organization.industry ?? filters.industries[0] ?? "Facilities services",
+    companySize: employeeRange(organization.estimated_num_employees),
+    location: `${city}, ${country}`,
+    email: "Add contact search",
+    linkedin: stripProtocol(organization.linkedin_url ?? "linkedin.com"),
+    fitScore: Math.max(70, 96 - index * 2),
+    fitReasons: [
+      "Matched Apollo company search",
+      "Account fits the selected Mexico territory",
+      "Use this company as a target account for contact discovery",
+    ],
+    aiInsight: `${company} matches the account search. Next step: search operations, facilities, sales, or general management contacts at this company.`,
+    recentSignal: "Found through live Apollo company search",
+    status: "new",
+    lastActivity: "Found just now",
+    companyFounded: organization.founded_year ? String(organization.founded_year) : "Unknown",
+    companyHQ: city,
+    companyWebsite: website,
+    bio: `${company} is a live Apollo company search result for the selected ICP.`,
+    region: filters.geos[0] ?? "Latin America",
+    country,
+    techStack: [],
+    verification: "not_requested",
     source: "apollo",
   };
 }
