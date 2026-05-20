@@ -59,7 +59,7 @@ export default function LoginPage() {
 
         <div className="relative z-10 flex items-center gap-2.5 mb-16">
           <Image
-            src="/logo.png"
+            src="/logo.svg"
             alt="leadRX10"
             width={36}
             height={36}
@@ -104,7 +104,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm space-y-6">
           <div className="lg:hidden flex items-center gap-2 mb-8">
             <Image
-              src="/logo.png"
+              src="/logo.svg"
               alt="leadRX10"
               width={30}
               height={30}

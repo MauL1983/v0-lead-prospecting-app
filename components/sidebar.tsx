@@ -34,7 +34,7 @@ export function Sidebar() {
     <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-sidebar-border bg-sidebar">
       <div className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-5">
         <Image
-          src="/logo.png"
+          src="/logo.svg"
           alt="leadRX10"
           width={32}
           height={32}

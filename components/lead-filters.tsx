@@ -1,11 +1,10 @@
 "use client";
-import { useState } from "react";
-import { Search, Zap, X } from "lucide-react";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { defaultFilters } from "@/lib/leads/search";
 import {
   COMPANY_SIZES,
   COUNTRIES_BY_REGION,
@@ -22,8 +21,6 @@ interface LeadFiltersProps {
 }
 
 export function LeadFilters({ filters, onFiltersChange, onSearch }: LeadFiltersProps) {
-  const [techInput, setTechInput] = useState("");
-
   const setFilters = (updater: (filters: SearchFilters) => SearchFilters) => {
     onFiltersChange(updater(filters));
   };
@@ -52,23 +49,17 @@ export function LeadFilters({ filters, onFiltersChange, onSearch }: LeadFiltersP
     });
   };
 
-  const addTech = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && techInput.trim()) {
-      setFilters((prev) => ({
-        ...prev,
-        techStack: [...prev.techStack, techInput.trim()],
-      }));
-      setTechInput("");
-    }
-  };
-
-  const removeTech = (tag: string) => {
-    setFilters((prev) => ({ ...prev, techStack: prev.techStack.filter((t) => t !== tag) }));
-  };
-
   const clearFilters = () => {
-    onFiltersChange({ query: "", industries: [], companySizes: [], titles: [], geos: [], countries: [], techStack: [], intentOnly: false });
-    setTechInput("");
+    onFiltersChange({
+      query: "",
+      industries: [],
+      companySizes: [],
+      titles: [],
+      geos: [],
+      countries: [],
+      techStack: defaultFilters.techStack,
+      intentOnly: true,
+    });
   };
 
   const visibleCountries = filters.geos.flatMap((geo) => COUNTRIES_BY_REGION[geo] ?? []);
@@ -181,52 +172,6 @@ export function LeadFilters({ filters, onFiltersChange, onSearch }: LeadFiltersP
             </div>
           </div>
         )}
-
-        <div>
-          <label className="text-xs font-semibold text-foreground block mb-2">Tech stack</label>
-          <input
-            type="text"
-            placeholder="Type a tool and press Enter (e.g. HubSpot)"
-            value={techInput}
-            onChange={(e) => setTechInput(e.target.value)}
-            onKeyDown={addTech}
-            className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          {filters.techStack.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {filters.techStack.map((tag) => (
-                <span
-                  key={tag}
-                  className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium"
-                >
-                  {tag}
-                  <button onClick={() => removeTech(tag)} className="text-muted-foreground hover:text-foreground">
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3">
-          <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-amber-500" />
-            <div>
-              <p className="text-sm font-medium">Intent signals</p>
-              <p className="text-xs text-muted-foreground">Only show high-intent leads</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {filters.intentOnly && (
-              <Badge variant="warning" className="text-[10px] py-0 px-1.5">Signal-based</Badge>
-            )}
-            <Switch
-              checked={filters.intentOnly}
-              onCheckedChange={(v) => setFilters((p) => ({ ...p, intentOnly: v }))}
-            />
-          </div>
-        </div>
       </div>
 
       <div className="p-5 border-t border-border space-y-2">
