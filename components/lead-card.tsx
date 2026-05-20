@@ -165,7 +165,7 @@ export function LeadCard({ lead, onEmailClick, onMeetingClick }: LeadCardProps) 
 
           <div className="rounded-lg border border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950/30 px-4 py-3">
             <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 mb-2">
-              ✦ Why this lead is a strong fit
+              ✦ Why this is a strong fit
             </p>
             <ul className="space-y-1.5">
               {lead.fitReasons.map((reason, i) => (

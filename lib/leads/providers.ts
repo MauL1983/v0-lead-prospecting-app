@@ -21,12 +21,19 @@ type ApolloPerson = {
 
 type ApolloOrganization = {
   id?: string;
+  alexa_ranking?: number;
+  annual_revenue_printed?: string;
+  blog_url?: string;
+  estimated_annual_revenue?: number;
+  facebook_url?: string;
+  keywords?: string[];
   name?: string;
   website_url?: string;
   primary_domain?: string;
   linkedin_url?: string;
   phone?: string;
   city?: string;
+  short_description?: string;
   state?: string;
   country?: string;
   industry?: string;
@@ -253,7 +260,9 @@ async function runApolloOrganizationSearch(filters: SearchFilters) {
     }
 
     const payload = (await response.json()) as { organizations?: ApolloOrganization[] };
-    const organizations = payload.organizations ?? [];
+    const organizations = shouldApplyFacilityRelevance(filters)
+      ? (payload.organizations ?? []).filter(isRelevantFacilityOrganization)
+      : payload.organizations ?? [];
     if (organizations.length > 0) {
       return organizations.map((organization, index) =>
         normalizeApolloOrganization(organization, filters, index),
@@ -397,7 +406,7 @@ function normalizeApolloOrganization(
     linkedin: stripProtocol(organization.linkedin_url ?? "linkedin.com"),
     fitScore: Math.max(70, 96 - index * 2),
     fitReasons: [
-      "Matched Apollo company search",
+      "Matched facility-services search terms",
       "Account fits the selected Mexico territory",
       "Use this company as a target account for contact discovery",
     ],
@@ -481,6 +490,14 @@ function mapTechStackToApolloTechnologyUids(techStack: string[]) {
 }
 
 function buildBroadApolloQuery(filters: SearchFilters) {
+  if (!shouldApplyFacilityRelevance(filters)) {
+    return filters.query;
+  }
+
+  return "facility management OR facilities services OR mantenimiento OR limpieza OR seguridad privada OR servicios generales";
+}
+
+function shouldApplyFacilityRelevance(filters: SearchFilters) {
   const query = filters.query.toLowerCase();
   const facilityTerms = [
     "facility management",
@@ -496,13 +513,69 @@ function buildBroadApolloQuery(filters: SearchFilters) {
     "mantenimiento industrial",
   ];
 
-  if (
+  return (
     facilityTerms.some((term) => query.includes(term)) ||
     query.includes("facility") ||
     query.includes("facilities")
-  ) {
-    return "facility management OR facilities services OR mantenimiento OR limpieza OR seguridad privada OR servicios generales";
-  }
+  );
+}
 
-  return filters.query;
+function isRelevantFacilityOrganization(organization: ApolloOrganization) {
+  const allowedIndustries = [
+    "facilities services",
+    "security and investigations",
+    "consumer services",
+    "construction",
+    "environmental services",
+    "business supplies and equipment",
+  ];
+  const requiredTerms = [
+    "facility",
+    "facilities",
+    "mantenimiento",
+    "limpieza",
+    "seguridad",
+    "servicios generales",
+    "janitorial",
+    "cleaning",
+    "security",
+    "maintenance",
+    "hvac",
+    "cctv",
+    "building services",
+    "property services",
+  ];
+  const blockedTerms = [
+    "forbes",
+    "media",
+    "publishing",
+    "newspaper",
+    "magazine",
+    "real estate",
+    "bank",
+    "university",
+  ];
+  const haystack = [
+    organization.name,
+    organization.industry,
+    organization.short_description,
+    organization.website_url,
+    organization.primary_domain,
+    organization.linkedin_url,
+    organization.blog_url,
+    organization.facebook_url,
+    organization.annual_revenue_printed,
+    organization.keywords?.join(" "),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const industry = organization.industry?.toLowerCase() ?? "";
+
+  if (blockedTerms.some((term) => haystack.includes(term))) return false;
+
+  return (
+    allowedIndustries.some((allowedIndustry) => industry.includes(allowedIndustry)) ||
+    requiredTerms.some((term) => haystack.includes(term))
+  );
 }
