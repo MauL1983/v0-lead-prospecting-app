@@ -197,16 +197,23 @@ async function runApolloOrganizationSearch(filters: SearchFilters) {
   const attempts = [
     {
       keywords: buildBroadApolloQuery(filters),
-      industries: ["facilities services", "real estate", "security and investigations", "consumer services", "construction"],
+      industries: [
+        "facilities services",
+        "security and investigations",
+        "consumer services",
+        "construction",
+        "environmental services",
+        "business supplies and equipment",
+      ],
       includeCompanySizes: true,
     },
     {
-      keywords: "facility management OR mantenimiento OR limpieza OR seguridad OR servicios generales",
+      keywords: "facility management OR facilities services OR mantenimiento OR limpieza OR seguridad privada OR servicios generales",
       industries: [],
       includeCompanySizes: true,
     },
     {
-      keywords: "mantenimiento OR limpieza OR seguridad",
+      keywords: "mantenimiento OR limpieza OR seguridad privada OR servicios generales",
       industries: [],
       includeCompanySizes: false,
     },
@@ -480,9 +487,10 @@ function buildBroadApolloQuery(filters: SearchFilters) {
     "facilities management",
     "property management",
     "building maintenance",
+    "facilities services",
     "mantenimiento",
     "limpieza",
-    "seguridad",
+    "seguridad privada",
     "servicios generales",
     "administracion de inmuebles",
     "mantenimiento industrial",
@@ -493,7 +501,7 @@ function buildBroadApolloQuery(filters: SearchFilters) {
     query.includes("facility") ||
     query.includes("facilities")
   ) {
-    return "facility management OR facilities management OR mantenimiento OR limpieza OR seguridad OR servicios generales";
+    return "facility management OR facilities services OR mantenimiento OR limpieza OR seguridad privada OR servicios generales";
   }
 
   return filters.query;
