@@ -153,7 +153,11 @@ export default function LeadsPage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Provider: {provider}
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground">{notes[0]}</p>
+                <div className="mt-1 space-y-1">
+                  {notes.map((note) => (
+                    <p key={note} className="text-sm text-muted-foreground">{note}</p>
+                  ))}
+                </div>
               </div>
               {sortedLeads.map((lead) => (
                 <LeadCard key={lead.id} lead={lead} />

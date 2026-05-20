@@ -91,27 +91,42 @@ export function getIntegrationStatus(): IntegrationStatus[] {
 async function searchApollo(filters: SearchFilters): Promise<LeadSearchResponse> {
   const endpoint =
     process.env.APOLLO_PEOPLE_SEARCH_URL ??
-    "https://api.apollo.io/api/v1/mixed_people/search";
-  const response = await fetch(endpoint, {
+    "https://api.apollo.io/api/v1/mixed_people/api_search";
+  const url = new URL(endpoint);
+
+  appendParam(url, "q_keywords", filters.query);
+  filters.titles.flatMap(mapTitleToApolloTitles).forEach((title) => {
+    appendParam(url, "person_titles[]", title);
+  });
+  inferCountries(filters).forEach((country) => {
+    appendParam(url, "organization_locations[]", country);
+  });
+  filters.companySizes.map(mapEmployeeRangeToApollo).forEach((range) => {
+    appendParam(url, "organization_num_employees_ranges[]", range);
+  });
+  filters.industries.forEach((industry) => {
+    appendParam(url, "q_organization_keyword_tags[]", industry);
+  });
+  mapTechStackToApolloTechnologyUids(filters.techStack).forEach((uid) => {
+    appendParam(url, "currently_using_any_of_technology_uids[]", uid);
+  });
+  appendParam(url, "contact_email_status[]", "verified");
+  appendParam(url, "page", "1");
+  appendParam(url, "per_page", "25");
+
+  const response = await fetch(url, {
     method: "POST",
     headers: {
+      accept: "application/json",
       "Cache-Control": "no-cache",
       "Content-Type": "application/json",
       "X-Api-Key": process.env.APOLLO_API_KEY ?? "",
     },
-    body: JSON.stringify({
-      q_keywords: filters.query,
-      person_titles: filters.titles.flatMap(mapTitleToApolloTitles),
-      organization_locations: inferCountries(filters),
-      organization_num_employees_ranges: filters.companySizes,
-      q_organization_keyword_tags: filters.industries,
-      page: 1,
-      per_page: 25,
-    }),
   });
 
   if (!response.ok) {
-    throw new Error(`Apollo returned ${response.status}`);
+    const details = await response.text();
+    throw new Error(`Apollo returned ${response.status}${details ? `: ${details}` : ""}`);
   }
 
   const payload = (await response.json()) as { people?: ApolloPerson[] };
@@ -204,4 +219,40 @@ function employeeRange(count?: number) {
 
 function stripProtocol(url: string) {
   return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
+function appendParam(url: URL, key: string, value?: string) {
+  if (value) url.searchParams.append(key, value);
+}
+
+function mapEmployeeRangeToApollo(range: string) {
+  const map: Record<string, string> = {
+    "1–10": "1,10",
+    "11–50": "11,50",
+    "51–200": "51,200",
+    "201–500": "201,500",
+    "500–1000": "500,1000",
+    "1000+": "1001,100000",
+  };
+
+  return map[range] ?? range.replace("–", ",").replace("+", ",100000");
+}
+
+function mapTechStackToApolloTechnologyUids(techStack: string[]) {
+  const map: Record<string, string> = {
+    HubSpot: "hubspot",
+    Salesforce: "salesforce",
+    "Microsoft Dynamics": "microsoft_dynamics",
+    "Zoho CRM": "zoho_crm",
+    SAP: "sap",
+    Oracle: "oracle",
+    "Microsoft 365": "microsoft_office_365",
+    "Google Workspace": "google_workspace",
+    ServiceNow: "servicenow",
+    "Monday.com": "monday_com",
+    Odoo: "odoo",
+    NetSuite: "netsuite",
+  };
+
+  return [...new Set(techStack.map((tech) => map[tech]).filter(Boolean))];
 }
