@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# leadRX10
 
-## Getting Started
+AI-powered B2B prospecting app generated with v0, now wired for real lead-search integrations.
 
-First, run the development server:
+## What is included
+
+- Existing v0 UI for lead search, pipeline, outreach, meetings, analytics, and login.
+- `/api/leads/search` route with a provider abstraction.
+- Demo lead graph with realistic North America and Latin America prospects.
+- Apollo-ready live search path.
+- Latin America-first default ICP covering Mexico, Brazil, Colombia, Chile, Argentina, and Peru.
+- CSV export for current search results.
+- Integrations page showing required environment variables.
+
+## Environment setup
+
+Copy `.env.example` to `.env.local` and fill in the providers you want to activate.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+AUTH_SECRET=...
+AUTH_URL=https://your-domain.com
+AUTH_GOOGLE_ID=...
+AUTH_GOOGLE_SECRET=...
+LEAD_DATA_PROVIDER=apollo
+APOLLO_API_KEY=...
+HUNTER_API_KEY=...
+NEVERBOUNCE_API_KEY=...
+WAPPALYZER_API_KEY=...
+HUBSPOT_PRIVATE_APP_TOKEN=...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Without keys, the app uses demo mode.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For Google OAuth, add these redirect URIs in Google Cloud:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `http://localhost:3000/api/auth/callback/google`
+- `https://your-production-domain.com/api/auth/callback/google`
 
-## Learn More
+## Local development
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm install
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Verification
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run lint
+npm run build
+```

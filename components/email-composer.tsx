@@ -3,8 +3,6 @@ import { useState } from "react";
 import { Sparkles, RotateCcw, Copy, Send, Save, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { MOCK_LEADS, Lead } from "@/lib/mock-data";
 import { getInitialsColor, cn } from "@/lib/utils";
 import { showToast } from "@/components/ui/toast";

@@ -1,14 +1,8 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 import { ToastContainer } from "@/components/ui/toast";
 import { NextAuthSessionProvider } from "@/components/session-provider";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 export const metadata: Metadata = {
   title: "leadRX10 — AI-Powered B2B Prospecting",
@@ -17,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} h-full`} suppressHydrationWarning>
+    <html lang="en" className="h-full" suppressHydrationWarning>
       <body className="h-full antialiased">
         <NextAuthSessionProvider>
           <AppShell>{children}</AppShell>

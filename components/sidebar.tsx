@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, Users, Mail, Calendar, BarChart2, Settings, LogOut } from "lucide-react";
+import { Search, Users, Mail, Calendar, BarChart2, Settings, LogOut, Plug } from "lucide-react";
 import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ const navItems = [
   { href: "/outreach", icon: Mail, label: "Outreach" },
   { href: "/meetings", icon: Calendar, label: "Meetings" },
   { href: "/analytics", icon: BarChart2, label: "Analytics" },
+  { href: "/integrations", icon: Plug, label: "Integrations" },
 ];
 
 export function Sidebar() {

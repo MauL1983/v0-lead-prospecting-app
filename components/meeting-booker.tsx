@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Video, RefreshCw, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { MOCK_LEADS, MOCK_MEETINGS, Lead } from "@/lib/mock-data";
 import { getInitialsColor, cn } from "@/lib/utils";
 import { showToast } from "@/components/ui/toast";

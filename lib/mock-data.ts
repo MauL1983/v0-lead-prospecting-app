@@ -22,6 +22,11 @@ export interface Lead {
   companyHQ: string;
   companyWebsite: string;
   bio: string;
+  region?: import("@/lib/leads/types").Region;
+  country?: string;
+  techStack?: string[];
+  verification?: import("@/lib/leads/types").EmailVerification;
+  source?: "mock" | "apollo" | "pdl";
 }
 
 export const MOCK_LEADS: Lead[] = [
@@ -52,6 +57,11 @@ export const MOCK_LEADS: Lead[] = [
     companyWebsite: "notion.so",
     bio:
       "Sarah Chen is a seasoned sales leader with over 12 years of experience scaling B2B SaaS revenue teams. At Notion, she oversees all outbound and inbound sales motions, managing a team of 50+ quota-carrying reps across North America and EMEA.",
+    region: "North America",
+    country: "United States",
+    techStack: ["Salesforce", "Segment", "Gong"],
+    verification: "valid",
+    source: "mock",
   },
   {
     id: "2",
@@ -80,6 +90,143 @@ export const MOCK_LEADS: Lead[] = [
     companyWebsite: "stripe.com",
     bio:
       "Marcus Williams drives revenue strategy at Stripe, overseeing a team of 80+ sales professionals. He has a strong background in revenue operations and consistently champions tools that improve pipeline velocity and rep productivity.",
+    region: "North America",
+    country: "United States",
+    techStack: ["Salesforce", "Marketo", "Looker"],
+    verification: "valid",
+    source: "mock",
+  },
+  {
+    id: "latam-1",
+    name: "Lucia Rojas",
+    initials: "LR",
+    title: "Head of Growth",
+    company: "Clara",
+    industry: "Fintech",
+    companySize: "201–500",
+    location: "🇲🇽 Mexico City, Mexico",
+    email: "lucia.rojas@clara.com",
+    linkedin: "linkedin.com/in/luciarojas",
+    fitScore: 94,
+    fitReasons: [
+      "Owns growth for a fast-scaling LATAM fintech with regional expansion pressure",
+      "Uses HubSpot and Stripe, matching the selected technographic filters",
+      "Hiring across Mexico and Colombia suggests immediate pipeline-building need",
+    ],
+    aiInsight:
+      "Lucia is a strong LATAM fit because Clara sells into finance teams across the region and needs accurate account prioritization by market. Her team can benefit from verified local buyer data and outreach sequencing.",
+    recentSignal: "Expanded SMB acquisition team · Open roles in Mexico and Colombia",
+    status: "new",
+    lastActivity: "Added today",
+    companyFounded: "2020",
+    companyHQ: "Mexico City, Mexico",
+    companyWebsite: "clara.com",
+    bio:
+      "Lucia Rojas leads growth at Clara, focusing on regional acquisition and revenue programs for finance teams across Latin America.",
+    region: "Latin America",
+    country: "Mexico",
+    techStack: ["HubSpot", "Stripe", "Amplitude"],
+    verification: "valid",
+    source: "mock",
+  },
+  {
+    id: "latam-2",
+    name: "Rafael Costa",
+    initials: "RC",
+    title: "Revenue Operations Lead",
+    company: "Nuvemshop",
+    industry: "E-commerce",
+    companySize: "500–1000",
+    location: "🇧🇷 São Paulo, Brazil",
+    email: "rafael.costa@nuvemshop.com.br",
+    linkedin: "linkedin.com/in/rafaelcosta",
+    fitScore: 89,
+    fitReasons: [
+      "Leads revenue systems for a major LATAM commerce platform",
+      "Salesforce and Looker indicate mature GTM operations",
+      "Partner ecosystem expansion creates a strong outbound use case",
+    ],
+    aiInsight:
+      "Rafael is an operations-oriented buyer who will care about data quality, CRM cleanliness, and routing by country. A verified LATAM lead graph maps directly to his workflow.",
+    recentSignal: "Partner ecosystem expansion · Brazil enterprise team growing",
+    status: "replied",
+    lastActivity: "Replied yesterday",
+    companyFounded: "2011",
+    companyHQ: "São Paulo, Brazil",
+    companyWebsite: "nuvemshop.com.br",
+    bio:
+      "Rafael Costa manages revenue operations and sales systems for Nuvemshop's regional commerce teams.",
+    region: "Latin America",
+    country: "Brazil",
+    techStack: ["Salesforce", "Zendesk", "Looker"],
+    verification: "risky",
+    source: "mock",
+  },
+  {
+    id: "latam-3",
+    name: "Maria Fernanda",
+    initials: "MF",
+    title: "Sales Director",
+    company: "Rappi",
+    industry: "Logistics Tech",
+    companySize: "1000+",
+    location: "🇨🇴 Bogotá, Colombia",
+    email: "maria.fernanda@rappi.com",
+    linkedin: "linkedin.com/in/mariafernanda",
+    fitScore: 87,
+    fitReasons: [
+      "Runs B2B sales programs across a regional logistics platform",
+      "Braze and Salesforce suggest active lifecycle and sales workflows",
+      "New B2B vertical creates immediate account-discovery demand",
+    ],
+    aiInsight:
+      "Maria is a high-value LATAM sales leader because her team needs region-specific account intelligence and clean buyer contacts across multiple countries.",
+    recentSignal: "New B2B vertical · Regional expansion across Colombia and Mexico",
+    status: "contacted",
+    lastActivity: "Emailed 3 days ago",
+    companyFounded: "2015",
+    companyHQ: "Bogotá, Colombia",
+    companyWebsite: "rappi.com",
+    bio:
+      "Maria Fernanda leads sales programs for Rappi's growing B2B motion across Latin America.",
+    region: "Latin America",
+    country: "Colombia",
+    techStack: ["Salesforce", "Braze", "Datadog"],
+    verification: "valid",
+    source: "mock",
+  },
+  {
+    id: "latam-4",
+    name: "Diego Morales",
+    initials: "DM",
+    title: "Country Manager",
+    company: "Buk",
+    industry: "HR Tech",
+    companySize: "201–500",
+    location: "🇨🇱 Santiago, Chile",
+    email: "diego.morales@buk.cl",
+    linkedin: "linkedin.com/in/diegomorales",
+    fitScore: 84,
+    fitReasons: [
+      "Owns country revenue for a regional HR tech company",
+      "HubSpot and Intercom match the selected GTM stack",
+      "Enterprise package launch indicates an outbound motion shift",
+    ],
+    aiInsight:
+      "Diego is a practical buyer for verified regional account data because he is balancing expansion goals with a local team that needs efficient targeting.",
+    recentSignal: "Enterprise package launch · Hiring account executives in Chile",
+    status: "meeting_booked",
+    lastActivity: "Meeting booked for Friday",
+    companyFounded: "2017",
+    companyHQ: "Santiago, Chile",
+    companyWebsite: "buk.cl",
+    bio:
+      "Diego Morales runs country-level sales and expansion strategy for Buk in Chile.",
+    region: "Latin America",
+    country: "Chile",
+    techStack: ["HubSpot", "Intercom", "Snowflake"],
+    verification: "unknown",
+    source: "mock",
   },
   {
     id: "3",
@@ -108,6 +255,11 @@ export const MOCK_LEADS: Lead[] = [
     companyWebsite: "figma.com",
     bio:
       "Priya Sharma leads growth strategy at Figma, focusing on accelerating enterprise adoption from their massive product-led user base. She brings a strong analytical mindset and has scaled growth teams at three previous SaaS companies.",
+    region: "North America",
+    country: "United States",
+    techStack: ["Salesforce", "Amplitude", "Marketo"],
+    verification: "valid",
+    source: "mock",
   },
   {
     id: "4",
@@ -136,6 +288,11 @@ export const MOCK_LEADS: Lead[] = [
     companyWebsite: "linear.app",
     bio:
       "James O'Brien manages the sales function at Linear, one of the fastest-growing developer tools companies in the world. He previously led SDR teams at Intercom and Zendesk before joining Linear at an early stage.",
+    region: "North America",
+    country: "United States",
+    techStack: ["HubSpot", "Intercom", "Linear"],
+    verification: "valid",
+    source: "mock",
   },
   {
     id: "5",
@@ -164,6 +321,11 @@ export const MOCK_LEADS: Lead[] = [
     companyWebsite: "vercel.com",
     bio:
       "Ana Martínez leads Sales Operations at Vercel, where she's built the entire revenue infrastructure from scratch. She has deep expertise in CRM architecture, territory planning, and sales tool evaluation across the full revenue tech stack.",
+    region: "North America",
+    country: "United States",
+    techStack: ["Salesforce", "Marketo", "Vercel"],
+    verification: "valid",
+    source: "mock",
   },
   {
     id: "6",
@@ -192,6 +354,11 @@ export const MOCK_LEADS: Lead[] = [
     companyWebsite: "loom.com",
     bio:
       "David Park leads business development and enterprise partnerships at Loom. With Loom now part of Atlassian, he's navigating a larger organizational structure while maintaining the agile deal-making approach that defined Loom's early growth.",
+    region: "North America",
+    country: "United States",
+    techStack: ["Salesforce", "Outreach", "Atlassian"],
+    verification: "valid",
+    source: "mock",
   },
   {
     id: "7",
@@ -220,6 +387,11 @@ export const MOCK_LEADS: Lead[] = [
     companyWebsite: "miro.com",
     bio:
       "Emma Laurent directs enterprise sales across EMEA at Miro. Based in Amsterdam, she oversees a 30-person team spanning 8 countries and has been instrumental in growing Miro's European enterprise revenue to 8-figure ARR.",
+    region: "Europe",
+    country: "Netherlands",
+    techStack: ["Salesforce", "Gong", "Marketo"],
+    verification: "valid",
+    source: "mock",
   },
   {
     id: "8",
@@ -248,6 +420,11 @@ export const MOCK_LEADS: Lead[] = [
     companyWebsite: "webflow.com",
     bio:
       "Carlos Reyes is a top-performing Account Executive at Webflow, consistently closing enterprise deals in the $100K+ ARR range. He's known for a consultative selling style and deep product knowledge that resonates with technical buyers.",
+    region: "North America",
+    country: "United States",
+    techStack: ["Salesforce", "Webflow", "HubSpot"],
+    verification: "valid",
+    source: "mock",
   },
   {
     id: "9",

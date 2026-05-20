@@ -6,56 +6,48 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-const INDUSTRIES = [
-  "SaaS / Software",
-  "Fintech",
-  "Healthcare Tech",
-  "E-commerce",
-  "Marketing Tech",
-  "HR Tech",
-  "Cybersecurity",
-  "Other",
-];
-
-const COMPANY_SIZES = ["1–10", "11–50", "51–200", "201–500", "500–1000", "1000+"];
-
-const TITLES = ["Founder/CEO", "VP / Director", "Manager", "IC/Individual Contributor"];
-
-const GEOS = ["North America", "Latin America", "Europe", "Asia Pacific"];
-
-interface FiltersState {
-  query: string;
-  industries: string[];
-  companySizes: string[];
-  titles: string[];
-  geos: string[];
-  techStack: string[];
-  intentOnly: boolean;
-}
+import {
+  COMPANY_SIZES,
+  COUNTRIES_BY_REGION,
+  INDUSTRIES,
+  REGIONS,
+  TITLES,
+} from "@/lib/leads/regions";
+import type { Region, SearchFilters } from "@/lib/leads/types";
 
 interface LeadFiltersProps {
+  filters: SearchFilters;
+  onFiltersChange: (filters: SearchFilters) => void;
   onSearch: () => void;
 }
 
-export function LeadFilters({ onSearch }: LeadFiltersProps) {
-  const [filters, setFilters] = useState<FiltersState>({
-    query: "",
-    industries: [],
-    companySizes: [],
-    titles: [],
-    geos: [],
-    techStack: [],
-    intentOnly: false,
-  });
+export function LeadFilters({ filters, onFiltersChange, onSearch }: LeadFiltersProps) {
   const [techInput, setTechInput] = useState("");
 
-  const toggleItem = (key: keyof FiltersState, value: string) => {
+  const setFilters = (updater: (filters: SearchFilters) => SearchFilters) => {
+    onFiltersChange(updater(filters));
+  };
+
+  const toggleItem = (key: keyof SearchFilters, value: string) => {
     setFilters((prev) => {
       const arr = prev[key] as string[];
       return {
         ...prev,
         [key]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value],
+      };
+    });
+  };
+
+  const toggleGeo = (geo: Region) => {
+    setFilters((prev) => {
+      const isActive = prev.geos.includes(geo);
+      const regionCountries = COUNTRIES_BY_REGION[geo] ?? [];
+      return {
+        ...prev,
+        geos: isActive ? prev.geos.filter((item) => item !== geo) : [...prev.geos, geo],
+        countries: isActive
+          ? prev.countries.filter((country) => !regionCountries.includes(country))
+          : [...new Set([...prev.countries, ...regionCountries])],
       };
     });
   };
@@ -75,9 +67,11 @@ export function LeadFilters({ onSearch }: LeadFiltersProps) {
   };
 
   const clearFilters = () => {
-    setFilters({ query: "", industries: [], companySizes: [], titles: [], geos: [], techStack: [], intentOnly: false });
+    onFiltersChange({ query: "", industries: [], companySizes: [], titles: [], geos: [], countries: [], techStack: [], intentOnly: false });
     setTechInput("");
   };
+
+  const visibleCountries = filters.geos.flatMap((geo) => COUNTRIES_BY_REGION[geo] ?? []);
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -89,7 +83,7 @@ export function LeadFilters({ onSearch }: LeadFiltersProps) {
           </div>
           <Textarea
             rows={3}
-            placeholder={"SaaS VP of Sales, 50–500 employees, US, using Salesforce"}
+            placeholder={"Fintech revenue leaders in Latin America using HubSpot or Salesforce"}
             value={filters.query}
             onChange={(e) => setFilters((p) => ({ ...p, query: e.target.value }))}
           />
@@ -152,12 +146,12 @@ export function LeadFilters({ onSearch }: LeadFiltersProps) {
         <div>
           <label className="text-xs font-semibold text-foreground block mb-2">Geography</label>
           <div className="space-y-1.5">
-            {GEOS.map((geo) => (
+            {REGIONS.map((geo) => (
               <label key={geo} className="flex items-center gap-2 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={filters.geos.includes(geo)}
-                  onChange={() => toggleItem("geos", geo)}
+                  onChange={() => toggleGeo(geo)}
                   className="h-3.5 w-3.5 rounded border-border accent-indigo-600"
                 />
                 <span className="text-sm text-foreground/80 group-hover:text-foreground transition-colors">{geo}</span>
@@ -165,6 +159,28 @@ export function LeadFilters({ onSearch }: LeadFiltersProps) {
             ))}
           </div>
         </div>
+
+        {visibleCountries.length > 0 && (
+          <div>
+            <label className="text-xs font-semibold text-foreground block mb-2">Countries</label>
+            <div className="flex flex-wrap gap-1.5">
+              {[...new Set(visibleCountries)].map((country) => (
+                <button
+                  key={country}
+                  onClick={() => toggleItem("countries", country)}
+                  className={cn(
+                    "px-3 py-1 rounded-md text-xs font-medium border transition-all duration-150",
+                    filters.countries.includes(country)
+                      ? "bg-indigo-600 border-indigo-600 text-white"
+                      : "border-border bg-background text-foreground/70 hover:border-indigo-400 hover:text-foreground"
+                  )}
+                >
+                  {country}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="text-xs font-semibold text-foreground block mb-2">Tech stack</label>
@@ -220,7 +236,7 @@ export function LeadFilters({ onSearch }: LeadFiltersProps) {
         <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={clearFilters}>
           Clear filters
         </Button>
-        <p className="text-center text-xs text-muted-foreground">Searching 275M+ verified B2B contacts</p>
+        <p className="text-center text-xs text-muted-foreground">Searching verified B2B contacts across the Americas</p>
       </div>
     </div>
   );
