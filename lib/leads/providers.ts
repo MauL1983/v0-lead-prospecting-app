@@ -19,6 +19,16 @@ type ApolloPerson = {
   };
 };
 
+type ApolloSearchOptions = {
+  includeCompanySizes?: boolean;
+  includeEmailStatus?: boolean;
+  includeIndustries?: boolean;
+  includeTechStack?: boolean;
+  includeTitles?: boolean;
+  keywords?: string;
+  note: string;
+};
+
 export async function searchLeads(
   filters: SearchFilters,
 ): Promise<LeadSearchResponse> {
@@ -89,28 +99,95 @@ export function getIntegrationStatus(): IntegrationStatus[] {
 }
 
 async function searchApollo(filters: SearchFilters): Promise<LeadSearchResponse> {
+  const attempts: ApolloSearchOptions[] = [
+    {
+      includeCompanySizes: true,
+      includeEmailStatus: true,
+      includeIndustries: true,
+      includeTechStack: true,
+      includeTitles: true,
+      note: "Live Apollo people search is active.",
+    },
+    {
+      includeCompanySizes: true,
+      includeTitles: true,
+      keywords: filters.query,
+      note: "Live Apollo people search is active with relaxed enrichment filters.",
+    },
+    {
+      includeTitles: true,
+      keywords: buildBroadApolloQuery(filters),
+      note: "Live Apollo people search is active with broad territory matching.",
+    },
+    {
+      keywords: buildBroadApolloQuery(filters),
+      note: "Live Apollo people search is active with broad company matching.",
+    },
+  ];
+
+  for (const attempt of attempts) {
+    const leads = await runApolloPeopleSearch(filters, attempt);
+    if (leads.length > 0) {
+      return {
+        provider: "Apollo",
+        providerMode: "live",
+        total: leads.length,
+        searchedAt: new Date().toISOString(),
+        leads,
+        notes: [
+          attempt.note,
+          "Results are ready to review, save, or export.",
+        ],
+      };
+    }
+  }
+
+  return {
+    provider: "Apollo",
+    providerMode: "live",
+    total: 0,
+    searchedAt: new Date().toISOString(),
+    leads: [],
+    notes: [
+      "Live Apollo people search is active, but this query returned 0 matches.",
+      "Try a broader search such as mantenimiento Mexico, limpieza Mexico, seguridad Mexico, or property management Mexico.",
+    ],
+  };
+}
+
+async function runApolloPeopleSearch(filters: SearchFilters, options: ApolloSearchOptions) {
   const endpoint =
     process.env.APOLLO_PEOPLE_SEARCH_URL ??
     "https://api.apollo.io/api/v1/mixed_people/api_search";
   const url = new URL(endpoint);
 
-  appendParam(url, "q_keywords", filters.query);
-  filters.titles.flatMap(mapTitleToApolloTitles).forEach((title) => {
-    appendParam(url, "person_titles[]", title);
-  });
+  appendParam(url, "q_keywords", options.keywords ?? filters.query);
+  if (options.includeTitles) {
+    filters.titles.flatMap(mapTitleToApolloTitles).forEach((title) => {
+      appendParam(url, "person_titles[]", title);
+    });
+  }
   inferCountries(filters).forEach((country) => {
     appendParam(url, "organization_locations[]", country);
   });
-  filters.companySizes.map(mapEmployeeRangeToApollo).forEach((range) => {
-    appendParam(url, "organization_num_employees_ranges[]", range);
-  });
-  filters.industries.forEach((industry) => {
-    appendParam(url, "q_organization_keyword_tags[]", industry);
-  });
-  mapTechStackToApolloTechnologyUids(filters.techStack).forEach((uid) => {
-    appendParam(url, "currently_using_any_of_technology_uids[]", uid);
-  });
-  appendParam(url, "contact_email_status[]", "verified");
+  if (options.includeCompanySizes) {
+    filters.companySizes.map(mapEmployeeRangeToApollo).forEach((range) => {
+      appendParam(url, "organization_num_employees_ranges[]", range);
+    });
+  }
+  if (options.includeIndustries) {
+    filters.industries.filter((industry) => industry !== "Other").forEach((industry) => {
+      appendParam(url, "q_organization_keyword_tags[]", industry);
+    });
+  }
+  if (options.includeTechStack) {
+    mapTechStackToApolloTechnologyUids(filters.techStack).forEach((uid) => {
+      appendParam(url, "currently_using_any_of_technology_uids[]", uid);
+    });
+  }
+  if (options.includeEmailStatus) {
+    appendParam(url, "contact_email_status[]", "verified");
+  }
   appendParam(url, "page", "1");
   appendParam(url, "per_page", "25");
 
@@ -130,21 +207,9 @@ async function searchApollo(filters: SearchFilters): Promise<LeadSearchResponse>
   }
 
   const payload = (await response.json()) as { people?: ApolloPerson[] };
-  const leads = (payload.people ?? []).map((person, index) =>
+  return (payload.people ?? []).map((person, index) =>
     normalizeApolloPerson(person, filters, index),
   );
-
-  return {
-    provider: "Apollo",
-    providerMode: "live",
-    total: leads.length,
-    searchedAt: new Date().toISOString(),
-    leads,
-    notes: [
-      "Live Apollo people search is active.",
-      "Add Hunter or NeverBounce to verify emails before export.",
-    ],
-  };
 }
 
 function normalizeApolloPerson(
@@ -255,4 +320,30 @@ function mapTechStackToApolloTechnologyUids(techStack: string[]) {
   };
 
   return [...new Set(techStack.map((tech) => map[tech]).filter(Boolean))];
+}
+
+function buildBroadApolloQuery(filters: SearchFilters) {
+  const query = filters.query.toLowerCase();
+  const facilityTerms = [
+    "facility management",
+    "facilities management",
+    "property management",
+    "building maintenance",
+    "mantenimiento",
+    "limpieza",
+    "seguridad",
+    "servicios generales",
+    "administracion de inmuebles",
+    "mantenimiento industrial",
+  ];
+
+  if (
+    facilityTerms.some((term) => query.includes(term)) ||
+    query.includes("facility") ||
+    query.includes("facilities")
+  ) {
+    return "facility management OR facilities management OR mantenimiento OR limpieza OR seguridad OR servicios generales";
+  }
+
+  return filters.query;
 }
