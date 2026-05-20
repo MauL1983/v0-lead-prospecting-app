@@ -50,16 +50,7 @@ export function LeadFilters({ filters, onFiltersChange, onSearch }: LeadFiltersP
   };
 
   const clearFilters = () => {
-    onFiltersChange({
-      query: "",
-      industries: [],
-      companySizes: [],
-      titles: [],
-      geos: [],
-      countries: [],
-      techStack: defaultFilters.techStack,
-      intentOnly: true,
-    });
+    onFiltersChange(defaultFilters);
   };
 
   const visibleCountries = filters.geos.flatMap((geo) => COUNTRIES_BY_REGION[geo] ?? []);
@@ -69,12 +60,14 @@ export function LeadFilters({ filters, onFiltersChange, onSearch }: LeadFiltersP
       <div className="p-5 flex-1 space-y-5">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <label className="text-xs font-semibold text-foreground">Search query</label>
+            <label className="text-xs font-semibold text-foreground uppercase">
+              What leads should we search for?
+            </label>
             <Badge variant="indigo" className="text-[10px] py-0 px-1.5">AI-powered</Badge>
           </div>
           <Textarea
             rows={3}
-            placeholder={"Fintech revenue leaders in Latin America using HubSpot or Salesforce"}
+            placeholder="AI-Powered Lead Search"
             value={filters.query}
             onChange={(e) => setFilters((p) => ({ ...p, query: e.target.value }))}
           />

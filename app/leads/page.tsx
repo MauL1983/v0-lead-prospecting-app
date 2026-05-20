@@ -20,6 +20,7 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>(() => demoSearch(defaultFilters));
   const [provider, setProvider] = useState("Demo lead graph");
   const [providerMode, setProviderMode] = useState<"live" | "demo">("demo");
+  const [resultType, setResultType] = useState<"leads" | "accounts">("leads");
   const [notes, setNotes] = useState<string[]>([
     "Latin America is included by default. Add API keys to switch to live provider mode.",
   ]);
@@ -36,6 +37,7 @@ export default function LeadsPage() {
       setLeads(data.leads);
       setProvider(data.provider);
       setProviderMode(data.providerMode);
+      setResultType(data.resultType ?? "leads");
       setNotes(data.notes);
       setStatus("results");
     } catch {
@@ -43,6 +45,7 @@ export default function LeadsPage() {
       setLeads(demoSearch(filters));
       setProvider("Demo lead graph");
       setProviderMode("demo");
+      setResultType("leads");
       setStatus("results");
     }
   };
@@ -102,7 +105,7 @@ export default function LeadsPage() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           {status === "results" ? (
             <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">{leads.length} leads</span> found
+              <span className="font-semibold text-foreground">{leads.length} {resultType}</span> found
               <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] uppercase tracking-wide">
                 {providerMode}
               </span>

@@ -20,6 +20,7 @@ export type SearchFilters = {
 export type LeadSearchResponse = {
   provider: string;
   providerMode: "live" | "demo";
+  resultType?: "leads" | "accounts";
   total: number;
   searchedAt: string;
   notes: string[];

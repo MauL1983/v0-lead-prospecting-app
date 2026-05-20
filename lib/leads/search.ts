@@ -1,5 +1,11 @@
 import { MOCK_LEADS, type Lead } from "@/lib/mock-data";
-import { COUNTRIES_BY_REGION } from "./regions";
+import {
+  COMPANY_SIZES,
+  COUNTRIES_BY_REGION,
+  INDUSTRIES,
+  REGIONS,
+  TITLES,
+} from "./regions";
 import type { SearchFilters } from "./types";
 
 const titleTerms: Record<string, string[]> = {
@@ -12,12 +18,12 @@ const titleTerms: Record<string, string[]> = {
 };
 
 export const defaultFilters: SearchFilters = {
-  query: "Fintech revenue leaders in Latin America using HubSpot or Salesforce",
-  industries: ["Fintech"],
-  companySizes: ["201–500", "500–1000"],
-  titles: ["VP / Director", "Revenue Operations", "Growth"],
-  geos: ["Latin America"],
-  countries: ["Mexico", "Brazil", "Colombia", "Chile", "Argentina", "Peru"],
+  query: "",
+  industries: INDUSTRIES,
+  companySizes: COMPANY_SIZES,
+  titles: TITLES,
+  geos: REGIONS,
+  countries: [...new Set(REGIONS.flatMap((region) => COUNTRIES_BY_REGION[region] ?? []))],
   techStack: [
     "HubSpot",
     "Salesforce",

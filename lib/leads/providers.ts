@@ -55,6 +55,7 @@ export async function searchLeads(
       return {
         provider: "Apollo",
         providerMode: "demo",
+        resultType: "leads",
         total: leads.length,
         searchedAt: new Date().toISOString(),
         leads,
@@ -70,6 +71,7 @@ export async function searchLeads(
   return {
     provider: "Demo lead graph",
     providerMode: "demo",
+    resultType: "leads",
     total: leads.length,
     searchedAt: new Date().toISOString(),
     leads,
@@ -146,6 +148,7 @@ async function searchApollo(filters: SearchFilters): Promise<LeadSearchResponse>
       return {
         provider: "Apollo",
         providerMode: "live",
+        resultType: "leads",
         total: leads.length,
         searchedAt: new Date().toISOString(),
         leads,
@@ -162,6 +165,7 @@ async function searchApollo(filters: SearchFilters): Promise<LeadSearchResponse>
     return {
       provider: "Apollo",
       providerMode: "live",
+      resultType: "accounts",
       total: companies.length,
       searchedAt: new Date().toISOString(),
       leads: companies,
@@ -175,6 +179,7 @@ async function searchApollo(filters: SearchFilters): Promise<LeadSearchResponse>
   return {
     provider: "Apollo",
     providerMode: "live",
+    resultType: "leads",
     total: 0,
     searchedAt: new Date().toISOString(),
     leads: [],
@@ -378,7 +383,7 @@ function normalizeApolloOrganization(
     initials: initials || "CO",
     title: "Target account",
     company,
-    industry: organization.industry ?? filters.industries[0] ?? "Facilities services",
+    industry: "Company Match",
     companySize: employeeRange(organization.estimated_num_employees),
     location: `${city}, ${country}`,
     email: "Add contact search",
