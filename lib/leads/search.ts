@@ -58,6 +58,10 @@ export function applyLeadFilters(leads: Lead[], filters: SearchFilters): Lead[] 
 }
 
 export function inferCountries(filters: SearchFilters) {
+  if (filters.countries.length > 0) {
+    return [...new Set(filters.countries)];
+  }
+
   const countries = new Set(filters.countries);
   filters.geos.forEach((geo) => {
     COUNTRIES_BY_REGION[geo]?.forEach((country) => countries.add(country));
