@@ -619,7 +619,7 @@ function buildApolloOrganizationAttempts(filters: SearchFilters): ApolloOrganiza
   if (intent === "maintenance") {
     return [
       {
-        keywords: normalizedQuery || "mantenimiento building maintenance maintenance",
+        keywords: normalizedQuery || "mantenimiento facility management facilities services property maintenance",
         industries: [],
         keywordTags: ["building maintenance"],
         includeCompanySizes: false,
@@ -633,7 +633,49 @@ function buildApolloOrganizationAttempts(filters: SearchFilters): ApolloOrganiza
         requirePayloadMatch: true,
       },
       {
+        keywords: undefined,
+        industries: [],
+        keywordTags: ["property maintenance"],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: undefined,
+        industries: [],
+        keywordTags: ["facility management"],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: undefined,
+        industries: [],
+        keywordTags: ["facilities services"],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
         keywords: "mantenimiento",
+        industries: [],
+        keywordTags: [],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: "property maintenance",
+        industries: [],
+        keywordTags: [],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: "facility management",
+        industries: [],
+        keywordTags: [],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: "facilities services",
         industries: [],
         keywordTags: [],
         includeCompanySizes: false,
@@ -813,7 +855,17 @@ function isRelevantFacilityOrganization(organization: ApolloOrganization, filter
   const intentTerms: Record<FacilitySearchIntent, string[]> = {
     cleaning: ["limpieza", "aseo", "cleaning", "janitorial", "housekeeping"],
     security: ["seguridad", "vigilancia", "security", "guard", "guards", "cctv"],
-    maintenance: ["mantenimiento", "maintenance", "building maintenance", "hvac"],
+    maintenance: [
+      "mantenimiento",
+      "maintenance",
+      "building maintenance",
+      "property maintenance",
+      "facility management",
+      "facilities management",
+      "facilities services",
+      "building services",
+      "hvac",
+    ],
     general: ["servicios generales", "facility", "facilities", "mantenimiento", "limpieza", "seguridad"],
     facility: requiredTerms,
   };
