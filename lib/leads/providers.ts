@@ -395,11 +395,15 @@ function normalizeApolloOrganization(
   const company = organization.name ?? "Unknown company";
   const country = organization.country ?? "Unknown";
   const city = organization.city ?? organization.state ?? "";
+  const hasVerifiedLocation = Boolean(organization.country || organization.city || organization.state);
   const location =
     city && organization.country
       ? `${city}, ${country}`
       : city || organization.country || "Location not returned by Apollo";
   const website = stripProtocol(organization.website_url ?? organization.primary_domain ?? "");
+  const fitScore = hasVerifiedLocation
+    ? Math.max(70, 96 - index * 2)
+    : Math.max(62, 74 - index * 2);
   const initials = company
     .split(/\s+/)
     .map((word) => word[0])
@@ -418,14 +422,20 @@ function normalizeApolloOrganization(
     location,
     email: "Add contact search",
     linkedin: stripProtocol(organization.linkedin_url ?? "linkedin.com"),
-    fitScore: Math.max(70, 96 - index * 2),
+    fitScore,
     fitReasons: [
       "Matched facility-services search terms",
-      "Account fits the selected territory",
+      hasVerifiedLocation
+        ? "Apollo returned location data for this account"
+        : "Location not returned by Apollo; verify service territory before outreach",
       "Use this company as a target account for contact discovery",
     ],
-    aiInsight: `${company} matches the account search. Next step: search operations, facilities, sales, or general management contacts at this company.`,
-    recentSignal: "Found through live Apollo company search",
+    aiInsight: hasVerifiedLocation
+      ? `${company} matches the account search. Next step: search operations, facilities, sales, or general management contacts at this company.`
+      : `${company} matches the account search, but Apollo did not return location data. Verify that the company serves the selected market before outreach.`,
+    recentSignal: hasVerifiedLocation
+      ? "Found through live Apollo company search"
+      : "Matched service terms; location needs verification",
     status: "new",
     lastActivity: "Found just now",
     companyFounded: organization.founded_year ? String(organization.founded_year) : "Unknown",

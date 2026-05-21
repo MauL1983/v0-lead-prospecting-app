@@ -19,6 +19,7 @@ export function LeadCard({ lead, onEmailClick, onMeetingClick }: LeadCardProps) 
   const [expanded, setExpanded] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const locationNeedsVerification = lead.location === "Location not returned by Apollo";
 
   const handleSave = () => {
     setSaved(true);
@@ -66,6 +67,11 @@ export function LeadCard({ lead, onEmailClick, onMeetingClick }: LeadCardProps) 
             <span className="text-xs font-medium text-foreground/80">{lead.company}</span>
             <ExternalLink className="h-3 w-3 text-muted-foreground" />
             <Badge variant="muted" className="text-[11px] py-0">{lead.industry}</Badge>
+            {locationNeedsVerification && (
+              <Badge variant="muted" className="text-[11px] py-0 border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                Location unverified
+              </Badge>
+            )}
             <span className="text-xs text-muted-foreground">{lead.companySize} employees</span>
             <span className="text-xs text-muted-foreground">{lead.location}</span>
           </div>
