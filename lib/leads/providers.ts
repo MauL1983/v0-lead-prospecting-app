@@ -59,6 +59,8 @@ type ApolloOrganizationSearchAttempt = {
   requirePayloadMatch: boolean;
 };
 
+type FacilitySearchIntent = "cleaning" | "security" | "maintenance" | "general" | "facility";
+
 export async function searchLeads(
   filters: SearchFilters,
 ): Promise<LeadSearchResponse> {
@@ -267,7 +269,9 @@ async function runApolloOrganizationSearch(filters: SearchFilters) {
 
     const payload = (await response.json()) as { organizations?: ApolloOrganization[] };
     const organizations = shouldApplyFacilityRelevance(filters)
-      ? (payload.organizations ?? []).filter(isRelevantFacilityOrganization)
+      ? (payload.organizations ?? []).filter((organization) =>
+          isRelevantFacilityOrganization(organization, filters),
+        )
       : payload.organizations ?? [];
     if (organizations.length > 0) {
       return organizations.map((organization, index) =>
@@ -389,10 +393,12 @@ function normalizeApolloOrganization(
   index: number,
 ): Lead {
   const company = organization.name ?? "Unknown company";
-  const selectedCountries = inferCountries(filters);
-  const country = organization.country ?? selectedCountries.join(", ") ?? "Selected territory";
+  const country = organization.country ?? "Unknown";
   const city = organization.city ?? organization.state ?? "";
-  const location = city ? `${city}, ${country}` : country;
+  const location =
+    city && organization.country
+      ? `${city}, ${country}`
+      : city || organization.country || "Location not returned by Apollo";
   const website = stripProtocol(organization.website_url ?? organization.primary_domain ?? "");
   const initials = company
     .split(/\s+/)
@@ -507,6 +513,7 @@ function buildBroadApolloQuery(filters: SearchFilters) {
 
 function buildApolloOrganizationAttempts(filters: SearchFilters): ApolloOrganizationSearchAttempt[] {
   const facilitySearch = shouldApplyFacilityRelevance(filters);
+  const intent = getFacilitySearchIntent(filters.query);
 
   if (!facilitySearch) {
     return [
@@ -520,11 +527,110 @@ function buildApolloOrganizationAttempts(filters: SearchFilters): ApolloOrganiza
     ];
   }
 
-  const normalizedQuery = filters.query
-    .replace(/\bor\b/gi, " ")
+  const normalizedQuery = normalizeSearchText(filters.query)
+    .replace(/\bor\b/g, " ")
     .replace(/[,\n]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+
+  if (intent === "cleaning") {
+    return [
+      {
+        keywords: normalizedQuery || "limpieza servicios limpieza aseo cleaning janitorial",
+        industries: [],
+        keywordTags: ["cleaning"],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: undefined,
+        industries: [],
+        keywordTags: ["janitorial"],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: "limpieza",
+        industries: [],
+        keywordTags: [],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: "aseo",
+        industries: [],
+        keywordTags: [],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: "cleaning services",
+        industries: [],
+        keywordTags: [],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: "janitorial services",
+        industries: [],
+        keywordTags: [],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+    ];
+  }
+
+  if (intent === "security") {
+    return [
+      {
+        keywords: normalizedQuery || "seguridad privada vigilancia security services",
+        industries: [],
+        keywordTags: ["security services"],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: "seguridad privada",
+        industries: [],
+        keywordTags: [],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: "vigilancia",
+        industries: [],
+        keywordTags: [],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+    ];
+  }
+
+  if (intent === "maintenance") {
+    return [
+      {
+        keywords: normalizedQuery || "mantenimiento building maintenance maintenance",
+        industries: [],
+        keywordTags: ["building maintenance"],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: undefined,
+        industries: [],
+        keywordTags: ["maintenance"],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+      {
+        keywords: "mantenimiento",
+        industries: [],
+        keywordTags: [],
+        includeCompanySizes: false,
+        requirePayloadMatch: true,
+      },
+    ];
+  }
 
   return [
     {
@@ -643,7 +749,7 @@ function buildApolloOrganizationAttempts(filters: SearchFilters): ApolloOrganiza
 }
 
 function shouldApplyFacilityRelevance(filters: SearchFilters) {
-  const query = filters.query.toLowerCase();
+  const query = normalizeSearchText(filters.query);
   const facilityTerms = [
     "facility management",
     "facilities management",
@@ -665,7 +771,8 @@ function shouldApplyFacilityRelevance(filters: SearchFilters) {
   );
 }
 
-function isRelevantFacilityOrganization(organization: ApolloOrganization) {
+function isRelevantFacilityOrganization(organization: ApolloOrganization, filters: SearchFilters) {
+  const intent = getFacilitySearchIntent(filters.query);
   const allowedIndustries = [
     "facilities services",
     "security and investigations",
@@ -693,29 +800,45 @@ function isRelevantFacilityOrganization(organization: ApolloOrganization) {
     "building services",
     "property services",
   ];
-  const haystack = [
-    organization.name,
-    organization.industry,
-    organization.short_description,
-    organization.website_url,
-    organization.primary_domain,
-    organization.linkedin_url,
-    organization.blog_url,
-    organization.facebook_url,
-    organization.annual_revenue_printed,
-    organization.keywords?.join(" "),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  const industry = organization.industry?.toLowerCase() ?? "";
+  const intentTerms: Record<FacilitySearchIntent, string[]> = {
+    cleaning: ["limpieza", "aseo", "cleaning", "janitorial", "housekeeping"],
+    security: ["seguridad", "vigilancia", "security", "guard", "guards", "cctv"],
+    maintenance: ["mantenimiento", "maintenance", "building maintenance", "hvac"],
+    general: ["servicios generales", "facility", "facilities", "mantenimiento", "limpieza", "seguridad"],
+    facility: requiredTerms,
+  };
+  const haystack = getOrganizationHaystack(organization);
+  const industry = normalizeSearchText(organization.industry ?? "");
 
   if (isBlockedFacilityOrganization(organization)) return false;
+
+  if (intent !== "facility") {
+    return intentTerms[intent].some((term) => haystack.includes(term));
+  }
 
   return (
     allowedIndustries.some((allowedIndustry) => industry.includes(allowedIndustry)) ||
     requiredTerms.some((term) => haystack.includes(term))
   );
+}
+
+function getFacilitySearchIntent(query: string): FacilitySearchIntent {
+  const normalizedQuery = normalizeSearchText(query);
+
+  if (["limpieza", "aseo", "cleaning", "janitorial"].some((term) => normalizedQuery.includes(term))) {
+    return "cleaning";
+  }
+  if (["seguridad", "vigilancia", "security"].some((term) => normalizedQuery.includes(term))) {
+    return "security";
+  }
+  if (["mantenimiento", "maintenance", "hvac"].some((term) => normalizedQuery.includes(term))) {
+    return "maintenance";
+  }
+  if (normalizedQuery.includes("servicios generales")) {
+    return "general";
+  }
+
+  return "facility";
 }
 
 function isBlockedFacilityOrganization(organization: ApolloOrganization) {
@@ -760,7 +883,13 @@ function isBlockedFacilityOrganization(organization: ApolloOrganization) {
     "petrobras",
     "cafam",
   ];
-  const haystack = [
+  const haystack = getOrganizationHaystack(organization);
+
+  return blockedTerms.some((term) => haystack.includes(term));
+}
+
+function getOrganizationHaystack(organization: ApolloOrganization) {
+  return normalizeSearchText([
     organization.name,
     organization.industry,
     organization.short_description,
@@ -773,8 +902,12 @@ function isBlockedFacilityOrganization(organization: ApolloOrganization) {
     organization.keywords?.join(" "),
   ]
     .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
+    .join(" "));
+}
 
-  return blockedTerms.some((term) => haystack.includes(term));
+function normalizeSearchText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
