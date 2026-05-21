@@ -123,6 +123,24 @@ export function getIntegrationStatus(): IntegrationStatus[] {
 }
 
 async function searchApollo(filters: SearchFilters): Promise<LeadSearchResponse> {
+  if (shouldApplyFacilityRelevance(filters)) {
+    const companies = await runApolloOrganizationSearch(filters);
+    if (companies.length > 0) {
+      return {
+        provider: "Apollo",
+        providerMode: "live",
+        resultType: "accounts",
+        total: companies.length,
+        searchedAt: new Date().toISOString(),
+        leads: companies,
+        notes: [
+          "Live Apollo company search is active.",
+          "Showing facility-service accounts first. Add target roles to find contacts inside these accounts.",
+        ],
+      };
+    }
+  }
+
   const attempts: ApolloSearchOptions[] = [
     {
       includeCompanySizes: true,
@@ -201,30 +219,7 @@ async function runApolloOrganizationSearch(filters: SearchFilters) {
   const endpoint =
     process.env.APOLLO_ORGANIZATION_SEARCH_URL ??
     "https://api.apollo.io/api/v1/mixed_companies/search";
-  const attempts = [
-    {
-      keywords: buildBroadApolloQuery(filters),
-      industries: [
-        "facilities services",
-        "security and investigations",
-        "consumer services",
-        "construction",
-        "environmental services",
-        "business supplies and equipment",
-      ],
-      includeCompanySizes: true,
-    },
-    {
-      keywords: "facility management OR facilities services OR mantenimiento OR limpieza OR seguridad privada OR servicios generales",
-      industries: [],
-      includeCompanySizes: true,
-    },
-    {
-      keywords: "mantenimiento OR limpieza OR seguridad privada OR servicios generales",
-      industries: [],
-      includeCompanySizes: false,
-    },
-  ];
+  const attempts = buildApolloOrganizationAttempts(filters);
 
   for (const attempt of attempts) {
     const url = new URL(endpoint);
@@ -261,7 +256,11 @@ async function runApolloOrganizationSearch(filters: SearchFilters) {
 
     const payload = (await response.json()) as { organizations?: ApolloOrganization[] };
     const organizations = shouldApplyFacilityRelevance(filters)
-      ? (payload.organizations ?? []).filter(isRelevantFacilityOrganization)
+      ? (payload.organizations ?? []).filter((organization) =>
+          attempt.requirePayloadMatch
+            ? isRelevantFacilityOrganization(organization)
+            : !isBlockedFacilityOrganization(organization),
+        )
       : payload.organizations ?? [];
     if (organizations.length > 0) {
       return organizations.map((organization, index) =>
@@ -497,6 +496,72 @@ function buildBroadApolloQuery(filters: SearchFilters) {
   return "facility management OR facilities services OR mantenimiento OR limpieza OR seguridad privada OR servicios generales";
 }
 
+function buildApolloOrganizationAttempts(filters: SearchFilters) {
+  const facilitySearch = shouldApplyFacilityRelevance(filters);
+
+  if (!facilitySearch) {
+    return [
+      {
+        keywords: buildBroadApolloQuery(filters),
+        industries: filters.industries.filter((industry) => industry !== "Other"),
+        includeCompanySizes: true,
+        requirePayloadMatch: false,
+      },
+    ];
+  }
+
+  const normalizedQuery = filters.query
+    .replace(/\bor\b/gi, " ")
+    .replace(/[,\n]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return [
+    {
+      keywords: normalizedQuery || "mantenimiento limpieza seguridad privada servicios generales",
+      industries: [],
+      includeCompanySizes: false,
+      requirePayloadMatch: true,
+    },
+    {
+      keywords: "mantenimiento",
+      industries: [],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+    {
+      keywords: "limpieza",
+      industries: [],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+    {
+      keywords: "seguridad privada",
+      industries: [],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+    {
+      keywords: "servicios generales",
+      industries: [],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+    {
+      keywords: "facility management",
+      industries: [],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+    {
+      keywords: "facilities services",
+      industries: [],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+  ];
+}
+
 function shouldApplyFacilityRelevance(filters: SearchFilters) {
   const query = filters.query.toLowerCase();
   const facilityTerms = [
@@ -545,6 +610,32 @@ function isRelevantFacilityOrganization(organization: ApolloOrganization) {
     "building services",
     "property services",
   ];
+  const haystack = [
+    organization.name,
+    organization.industry,
+    organization.short_description,
+    organization.website_url,
+    organization.primary_domain,
+    organization.linkedin_url,
+    organization.blog_url,
+    organization.facebook_url,
+    organization.annual_revenue_printed,
+    organization.keywords?.join(" "),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const industry = organization.industry?.toLowerCase() ?? "";
+
+  if (isBlockedFacilityOrganization(organization)) return false;
+
+  return (
+    allowedIndustries.some((allowedIndustry) => industry.includes(allowedIndustry)) ||
+    requiredTerms.some((term) => haystack.includes(term))
+  );
+}
+
+function isBlockedFacilityOrganization(organization: ApolloOrganization) {
   const blockedTerms = [
     "forbes",
     "media",
@@ -570,12 +661,6 @@ function isRelevantFacilityOrganization(organization: ApolloOrganization) {
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
-  const industry = organization.industry?.toLowerCase() ?? "";
 
-  if (blockedTerms.some((term) => haystack.includes(term))) return false;
-
-  return (
-    allowedIndustries.some((allowedIndustry) => industry.includes(allowedIndustry)) ||
-    requiredTerms.some((term) => haystack.includes(term))
-  );
+  return blockedTerms.some((term) => haystack.includes(term));
 }
