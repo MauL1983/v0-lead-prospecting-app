@@ -217,8 +217,8 @@ async function searchApollo(filters: SearchFilters): Promise<LeadSearchResponse>
     searchedAt: new Date().toISOString(),
     leads: [],
     notes: [
-      "Live Apollo people search is active, but this query returned 0 matches.",
-      "Try a broader search such as mantenimiento Mexico, limpieza Mexico, seguridad Mexico, or property management Mexico.",
+      "Live Apollo search is active, but this query returned 0 verified matches.",
+      "The app now hides broad Apollo company matches unless they show facility-service evidence.",
     ],
   };
 }
@@ -267,11 +267,7 @@ async function runApolloOrganizationSearch(filters: SearchFilters) {
 
     const payload = (await response.json()) as { organizations?: ApolloOrganization[] };
     const organizations = shouldApplyFacilityRelevance(filters)
-      ? (payload.organizations ?? []).filter((organization) =>
-          attempt.requirePayloadMatch
-            ? isRelevantFacilityOrganization(organization)
-            : !isBlockedFacilityOrganization(organization),
-        )
+      ? (payload.organizations ?? []).filter(isRelevantFacilityOrganization)
       : payload.organizations ?? [];
     if (organizations.length > 0) {
       return organizations.map((organization, index) =>
@@ -393,8 +389,10 @@ function normalizeApolloOrganization(
   index: number,
 ): Lead {
   const company = organization.name ?? "Unknown company";
-  const country = organization.country ?? filters.countries[0] ?? "Mexico";
-  const city = organization.city ?? organization.state ?? "Mexico";
+  const selectedCountries = inferCountries(filters);
+  const country = organization.country ?? selectedCountries.join(", ") ?? "Selected territory";
+  const city = organization.city ?? organization.state ?? "";
+  const location = city ? `${city}, ${country}` : country;
   const website = stripProtocol(organization.website_url ?? organization.primary_domain ?? "");
   const initials = company
     .split(/\s+/)
@@ -411,13 +409,13 @@ function normalizeApolloOrganization(
     company,
     industry: "Company Match",
     companySize: employeeRange(organization.estimated_num_employees),
-    location: `${city}, ${country}`,
+    location,
     email: "Add contact search",
     linkedin: stripProtocol(organization.linkedin_url ?? "linkedin.com"),
     fitScore: Math.max(70, 96 - index * 2),
     fitReasons: [
       "Matched facility-services search terms",
-      "Account fits the selected Mexico territory",
+      "Account fits the selected territory",
       "Use this company as a target account for contact discovery",
     ],
     aiInsight: `${company} matches the account search. Next step: search operations, facilities, sales, or general management contacts at this company.`,
@@ -425,7 +423,7 @@ function normalizeApolloOrganization(
     status: "new",
     lastActivity: "Found just now",
     companyFounded: organization.founded_year ? String(organization.founded_year) : "Unknown",
-    companyHQ: city,
+    companyHQ: city || "Location not returned by Apollo",
     companyWebsite: website,
     bio: `${company} is a live Apollo company search result for the selected ICP.`,
     region: filters.geos[0] ?? "Latin America",
@@ -534,56 +532,56 @@ function buildApolloOrganizationAttempts(filters: SearchFilters): ApolloOrganiza
       industries: [],
       keywordTags: ["facilities services"],
       includeCompanySizes: false,
-      requirePayloadMatch: false,
+      requirePayloadMatch: true,
     },
     {
       keywords: undefined,
       industries: [],
       keywordTags: ["facility management"],
       includeCompanySizes: false,
-      requirePayloadMatch: false,
+      requirePayloadMatch: true,
     },
     {
       keywords: undefined,
       industries: [],
       keywordTags: ["building maintenance"],
       includeCompanySizes: false,
-      requirePayloadMatch: false,
+      requirePayloadMatch: true,
     },
     {
       keywords: undefined,
       industries: [],
       keywordTags: ["maintenance"],
       includeCompanySizes: false,
-      requirePayloadMatch: false,
+      requirePayloadMatch: true,
     },
     {
       keywords: undefined,
       industries: [],
       keywordTags: ["cleaning"],
       includeCompanySizes: false,
-      requirePayloadMatch: false,
+      requirePayloadMatch: true,
     },
     {
       keywords: undefined,
       industries: [],
       keywordTags: ["janitorial"],
       includeCompanySizes: false,
-      requirePayloadMatch: false,
+      requirePayloadMatch: true,
     },
     {
       keywords: undefined,
       industries: [],
       keywordTags: ["security services"],
       includeCompanySizes: false,
-      requirePayloadMatch: false,
+      requirePayloadMatch: true,
     },
     {
       keywords: undefined,
       industries: [],
       keywordTags: ["property maintenance"],
       includeCompanySizes: false,
-      requirePayloadMatch: false,
+      requirePayloadMatch: true,
     },
     {
       keywords: "mantenimiento limpieza seguridad privada servicios generales",
@@ -679,6 +677,9 @@ function isRelevantFacilityOrganization(organization: ApolloOrganization) {
   const requiredTerms = [
     "facility",
     "facilities",
+    "facility management",
+    "facilities services",
+    "integrated facilities",
     "mantenimiento",
     "limpieza",
     "seguridad",
@@ -727,9 +728,37 @@ function isBlockedFacilityOrganization(organization: ApolloOrganization) {
     "real estate",
     "bank",
     "university",
+    "universidad",
+    "college",
+    "school",
+    "escuela",
     "job board",
+    "jobs",
+    "empleo",
+    "empleos",
+    "bolsa de trabajo",
     "employment",
     "recruiting",
+    "recruitment",
+    "staffing",
+    "human resources",
+    "salud",
+    "health",
+    "hospital",
+    "minera",
+    "mining",
+    "oil",
+    "gas",
+    "petroleum",
+    "bebida",
+    "beverage",
+    "cerveza",
+    "beer",
+    "coca-cola",
+    "ambev",
+    "vale",
+    "petrobras",
+    "cafam",
   ];
   const haystack = [
     organization.name,
