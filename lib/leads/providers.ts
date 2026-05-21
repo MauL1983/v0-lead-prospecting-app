@@ -51,6 +51,14 @@ type ApolloSearchOptions = {
   note: string;
 };
 
+type ApolloOrganizationSearchAttempt = {
+  includeCompanySizes: boolean;
+  industries: string[];
+  keywordTags: string[];
+  keywords?: string;
+  requirePayloadMatch: boolean;
+};
+
 export async function searchLeads(
   filters: SearchFilters,
 ): Promise<LeadSearchResponse> {
@@ -225,6 +233,9 @@ async function runApolloOrganizationSearch(filters: SearchFilters) {
     const url = new URL(endpoint);
 
     appendParam(url, "q_keywords", attempt.keywords);
+    attempt.keywordTags.forEach((keywordTag) => {
+      appendParam(url, "q_organization_keyword_tags[]", keywordTag);
+    });
     inferCountries(filters).forEach((country) => {
       appendParam(url, "organization_locations[]", country);
     });
@@ -496,7 +507,7 @@ function buildBroadApolloQuery(filters: SearchFilters) {
   return "facility management OR facilities services OR mantenimiento OR limpieza OR seguridad privada OR servicios generales";
 }
 
-function buildApolloOrganizationAttempts(filters: SearchFilters) {
+function buildApolloOrganizationAttempts(filters: SearchFilters): ApolloOrganizationSearchAttempt[] {
   const facilitySearch = shouldApplyFacilityRelevance(filters);
 
   if (!facilitySearch) {
@@ -504,6 +515,7 @@ function buildApolloOrganizationAttempts(filters: SearchFilters) {
       {
         keywords: buildBroadApolloQuery(filters),
         industries: filters.industries.filter((industry) => industry !== "Other"),
+        keywordTags: [],
         includeCompanySizes: true,
         requirePayloadMatch: false,
       },
@@ -518,46 +530,116 @@ function buildApolloOrganizationAttempts(filters: SearchFilters) {
 
   return [
     {
-      keywords: normalizedQuery || "mantenimiento limpieza seguridad privada servicios generales",
+      keywords: normalizedQuery || undefined,
       industries: [],
+      keywordTags: ["facilities services"],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+    {
+      keywords: undefined,
+      industries: [],
+      keywordTags: ["facility management"],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+    {
+      keywords: undefined,
+      industries: [],
+      keywordTags: ["building maintenance"],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+    {
+      keywords: undefined,
+      industries: [],
+      keywordTags: ["maintenance"],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+    {
+      keywords: undefined,
+      industries: [],
+      keywordTags: ["cleaning"],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+    {
+      keywords: undefined,
+      industries: [],
+      keywordTags: ["janitorial"],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+    {
+      keywords: undefined,
+      industries: [],
+      keywordTags: ["security services"],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+    {
+      keywords: undefined,
+      industries: [],
+      keywordTags: ["property maintenance"],
+      includeCompanySizes: false,
+      requirePayloadMatch: false,
+    },
+    {
+      keywords: "mantenimiento limpieza seguridad privada servicios generales",
+      industries: [],
+      keywordTags: [],
+      includeCompanySizes: false,
+      requirePayloadMatch: true,
+    },
+    {
+      keywords: "facility management facilities services building maintenance cleaning security services",
+      industries: [],
+      keywordTags: [],
+      includeCompanySizes: false,
+      requirePayloadMatch: true,
+    },
+    {
+      keywords: "servicios generales",
+      industries: [],
+      keywordTags: [],
+      includeCompanySizes: false,
+      requirePayloadMatch: true,
+    },
+    {
+      keywords: "limpieza",
+      industries: [],
+      keywordTags: [],
+      includeCompanySizes: false,
+      requirePayloadMatch: true,
+    },
+    {
+      keywords: "seguridad privada",
+      industries: [],
+      keywordTags: [],
       includeCompanySizes: false,
       requirePayloadMatch: true,
     },
     {
       keywords: "mantenimiento",
       industries: [],
+      keywordTags: [],
       includeCompanySizes: false,
-      requirePayloadMatch: false,
-    },
-    {
-      keywords: "limpieza",
-      industries: [],
-      includeCompanySizes: false,
-      requirePayloadMatch: false,
-    },
-    {
-      keywords: "seguridad privada",
-      industries: [],
-      includeCompanySizes: false,
-      requirePayloadMatch: false,
-    },
-    {
-      keywords: "servicios generales",
-      industries: [],
-      includeCompanySizes: false,
-      requirePayloadMatch: false,
+      requirePayloadMatch: true,
     },
     {
       keywords: "facility management",
       industries: [],
+      keywordTags: [],
       includeCompanySizes: false,
-      requirePayloadMatch: false,
+      requirePayloadMatch: true,
     },
     {
       keywords: "facilities services",
       industries: [],
+      keywordTags: [],
       includeCompanySizes: false,
-      requirePayloadMatch: false,
+      requirePayloadMatch: true,
     },
   ];
 }
@@ -645,6 +727,9 @@ function isBlockedFacilityOrganization(organization: ApolloOrganization) {
     "real estate",
     "bank",
     "university",
+    "job board",
+    "employment",
+    "recruiting",
   ];
   const haystack = [
     organization.name,
