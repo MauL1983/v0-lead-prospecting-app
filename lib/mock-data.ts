@@ -26,7 +26,7 @@ export interface Lead {
   country?: string;
   techStack?: string[];
   verification?: import("@/lib/leads/types").EmailVerification;
-  source?: "mock" | "apollo" | "pdl";
+  source?: "mock" | "apollo" | "google_places" | "pdl";
 }
 
 export const MOCK_LEADS: Lead[] = [

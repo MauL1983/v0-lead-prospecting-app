@@ -41,6 +41,21 @@ type ApolloOrganization = {
   founded_year?: number;
 };
 
+type GooglePlace = {
+  id?: string;
+  businessStatus?: string;
+  displayName?: {
+    text?: string;
+  };
+  formattedAddress?: string;
+  googleMapsUri?: string;
+  internationalPhoneNumber?: string;
+  nationalPhoneNumber?: string;
+  primaryType?: string;
+  types?: string[];
+  websiteUri?: string;
+};
+
 type ApolloSearchOptions = {
   includeCompanySizes?: boolean;
   includeEmailStatus?: boolean;
@@ -64,6 +79,17 @@ type FacilitySearchIntent = "cleaning" | "security" | "maintenance" | "general" 
 export async function searchLeads(
   filters: SearchFilters,
 ): Promise<LeadSearchResponse> {
+  if (shouldUseLocalServiceDiscovery(filters) && process.env.GOOGLE_PLACES_API_KEY) {
+    try {
+      const places = await searchGooglePlaces(filters);
+      if (places.leads.length > 0) {
+        return places;
+      }
+    } catch (error) {
+      console.error("Google Places lead search failed", error);
+    }
+  }
+
   if (process.env.LEAD_DATA_PROVIDER === "apollo" && process.env.APOLLO_API_KEY) {
     try {
       return await searchApollo(filters);
@@ -109,6 +135,13 @@ export function getIntegrationStatus(): IntegrationStatus[] {
       envVars: ["LEAD_DATA_PROVIDER=apollo", "APOLLO_API_KEY"],
     },
     {
+      key: "google-places",
+      label: "Google Places",
+      purpose: "Discover local service companies by country before enriching contacts",
+      configured: Boolean(process.env.GOOGLE_PLACES_API_KEY),
+      envVars: ["GOOGLE_PLACES_API_KEY"],
+    },
+    {
       key: "email-verification",
       label: "Hunter or NeverBounce",
       purpose: "Verify emails before export or outreach",
@@ -130,6 +163,82 @@ export function getIntegrationStatus(): IntegrationStatus[] {
       envVars: ["HUBSPOT_PRIVATE_APP_TOKEN"],
     },
   ];
+}
+
+async function searchGooglePlaces(filters: SearchFilters): Promise<LeadSearchResponse> {
+  const endpoint =
+    process.env.GOOGLE_PLACES_TEXT_SEARCH_URL ??
+    "https://places.googleapis.com/v1/places:searchText";
+  const countries = inferCountries(filters).filter(Boolean);
+  const targetCountries = countries.length > 0 ? countries : ["Mexico"];
+  const queries = buildGooglePlacesQueries(filters);
+  const seen = new Set<string>();
+  const leads: Lead[] = [];
+
+  for (const country of targetCountries) {
+    for (const query of queries) {
+      if (leads.length >= 25) break;
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": process.env.GOOGLE_PLACES_API_KEY ?? "",
+          "X-Goog-FieldMask": [
+            "places.id",
+            "places.businessStatus",
+            "places.displayName",
+            "places.formattedAddress",
+            "places.googleMapsUri",
+            "places.internationalPhoneNumber",
+            "places.nationalPhoneNumber",
+            "places.primaryType",
+            "places.types",
+            "places.websiteUri",
+          ].join(","),
+        },
+        body: JSON.stringify({
+          textQuery: `${query} en ${country}`,
+          includePureServiceAreaBusinesses: true,
+          languageCode: "es-419",
+          pageSize: 10,
+          regionCode: countryToRegionCode(country),
+        }),
+      });
+
+      if (!response.ok) {
+        const details = await response.text();
+        throw new Error(`Google Places returned ${response.status}${details ? `: ${details}` : ""}`);
+      }
+
+      const payload = (await response.json()) as { places?: GooglePlace[] };
+      for (const place of payload.places ?? []) {
+        const id = place.id ?? place.googleMapsUri ?? place.displayName?.text;
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        leads.push(normalizeGooglePlace(place, filters, country, leads.length));
+        if (leads.length >= 25) break;
+      }
+    }
+  }
+
+  return {
+    provider: "Google Places",
+    providerMode: "live",
+    resultType: "accounts",
+    total: leads.length,
+    searchedAt: new Date().toISOString(),
+    leads,
+    notes: leads.length
+      ? [
+          "Live Google Places service-company discovery is active.",
+          "Apollo should be used next to find people inside these accounts.",
+        ]
+      : [
+          "Live Google Places search is active, but this query returned 0 local company matches.",
+          "Try a service phrase such as servicios de limpieza, mantenimiento industrial, seguridad privada, or facility management.",
+        ],
+  };
 }
 
 async function searchApollo(filters: SearchFilters): Promise<LeadSearchResponse> {
@@ -450,6 +559,58 @@ function normalizeApolloOrganization(
   };
 }
 
+function normalizeGooglePlace(
+  place: GooglePlace,
+  filters: SearchFilters,
+  country: string,
+  index: number,
+): Lead {
+  const company = place.displayName?.text ?? "Unknown service company";
+  const location = place.formattedAddress ?? `${country} service area`;
+  const phone = place.nationalPhoneNumber ?? place.internationalPhoneNumber;
+  const website = stripProtocol(place.websiteUri ?? place.googleMapsUri ?? "");
+  const scoreBase = place.websiteUri ? 96 : 90;
+  const initials = company
+    .split(/\s+/)
+    .map((word) => word[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return {
+    id: place.id ?? `google_place_${index}`,
+    name: `${company} Leadership`,
+    initials: initials || "GP",
+    title: "Target account",
+    company,
+    industry: "Local Service Company",
+    companySize: "Unknown",
+    location,
+    email: "Add contact search",
+    linkedin: place.googleMapsUri ?? "google.com/maps",
+    phone,
+    fitScore: Math.max(72, scoreBase - index * 2),
+    fitReasons: [
+      "Matched local service-company discovery",
+      `Business appears in the selected ${country} territory`,
+      "Use Apollo next to identify owners, operations managers, or facility leaders",
+    ],
+    aiInsight: `${company} was discovered through local Google Places search. Next step: enrich this account in Apollo and find decision makers for operations, facilities, or general management.`,
+    recentSignal: "Found through live Google Places local business search",
+    status: "new",
+    lastActivity: "Found just now",
+    companyFounded: "Unknown",
+    companyHQ: location,
+    companyWebsite: website,
+    bio: `${company} is a local service-company account discovered from Google Places for the selected ICP.`,
+    region: countryToRegion(country),
+    country,
+    techStack: [],
+    verification: "not_requested",
+    source: "google_places",
+  };
+}
+
 function mapTitleToApolloTitles(title: string) {
   const map: Record<string, string[]> = {
     "Founder/CEO": ["CEO", "Founder"],
@@ -513,12 +674,73 @@ function mapTechStackToApolloTechnologyUids(techStack: string[]) {
   return [...new Set(techStack.map((tech) => map[tech]).filter(Boolean))];
 }
 
+function shouldUseLocalServiceDiscovery(filters: SearchFilters) {
+  return shouldApplyFacilityRelevance(filters);
+}
+
 function buildBroadApolloQuery(filters: SearchFilters) {
   if (!shouldApplyFacilityRelevance(filters)) {
     return filters.query;
   }
 
   return "facility management OR facilities services OR mantenimiento OR limpieza OR seguridad privada OR servicios generales";
+}
+
+function buildGooglePlacesQueries(filters: SearchFilters) {
+  const normalizedQuery = normalizeSearchText(filters.query).trim();
+  const intent = getFacilitySearchIntent(filters.query);
+
+  if (intent === "cleaning") {
+    return uniqueQueries([
+      filters.query,
+      "empresas de limpieza",
+      "servicios de limpieza",
+      "limpieza de oficinas",
+      "janitorial services",
+    ]);
+  }
+
+  if (intent === "security") {
+    return uniqueQueries([
+      filters.query,
+      "seguridad privada",
+      "empresas de seguridad",
+      "servicios de vigilancia",
+      "security services",
+    ]);
+  }
+
+  if (intent === "maintenance") {
+    return uniqueQueries([
+      filters.query,
+      "empresas de mantenimiento",
+      "servicios de mantenimiento",
+      "mantenimiento industrial",
+      "mantenimiento de edificios",
+      "building maintenance",
+    ]);
+  }
+
+  if (intent === "general") {
+    return uniqueQueries([
+      filters.query,
+      "servicios generales",
+      "facility services",
+      "mantenimiento limpieza seguridad",
+    ]);
+  }
+
+  return uniqueQueries([
+    normalizedQuery ? filters.query : "facility management",
+    "facility management",
+    "facilities services",
+    "building maintenance",
+    "property maintenance",
+  ]);
+}
+
+function uniqueQueries(queries: string[]) {
+  return [...new Set(queries.map((query) => query.trim()).filter(Boolean))];
 }
 
 function buildApolloOrganizationAttempts(filters: SearchFilters): ApolloOrganizationSearchAttempt[] {
@@ -972,4 +1194,39 @@ function normalizeSearchText(value: string) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+}
+
+function countryToRegionCode(country: string) {
+  const map: Record<string, string> = {
+    Argentina: "AR",
+    Australia: "AU",
+    Brazil: "BR",
+    Canada: "CA",
+    Chile: "CL",
+    Colombia: "CO",
+    France: "FR",
+    Germany: "DE",
+    India: "IN",
+    Japan: "JP",
+    Mexico: "MX",
+    Netherlands: "NL",
+    Peru: "PE",
+    Singapore: "SG",
+    Spain: "ES",
+    "United Kingdom": "GB",
+    "United States": "US",
+  };
+
+  return map[country] ?? "MX";
+}
+
+function countryToRegion(country: string): SearchFilters["geos"][number] {
+  const latinAmerica = ["Argentina", "Brazil", "Chile", "Colombia", "Mexico", "Peru"];
+  const northAmerica = ["Canada", "United States"];
+  const europe = ["France", "Germany", "Netherlands", "Spain", "United Kingdom"];
+
+  if (latinAmerica.includes(country)) return "Latin America";
+  if (northAmerica.includes(country)) return "North America";
+  if (europe.includes(country)) return "Europe";
+  return "Asia Pacific";
 }
