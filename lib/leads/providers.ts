@@ -81,12 +81,21 @@ export async function searchLeads(
 ): Promise<LeadSearchResponse> {
   if (shouldUseLocalServiceDiscovery(filters) && process.env.GOOGLE_PLACES_API_KEY) {
     try {
-      const places = await searchGooglePlaces(filters);
-      if (places.leads.length > 0) {
-        return places;
-      }
+      return await searchGooglePlaces(filters);
     } catch (error) {
-      console.error("Google Places lead search failed", error);
+      return {
+        provider: "Google Places",
+        providerMode: "live",
+        resultType: "accounts",
+        total: 0,
+        searchedAt: new Date().toISOString(),
+        leads: [],
+        notes: [
+          "Google Places is configured, but the request failed before returning local company results.",
+          error instanceof Error ? error.message : "Unknown Google Places error",
+          "Check that Places API is enabled, billing is active, and the Vercel key is named GOOGLE_PLACES_API_KEY.",
+        ],
+      };
     }
   }
 
